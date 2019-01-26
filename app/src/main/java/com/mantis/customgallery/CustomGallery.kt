@@ -84,15 +84,20 @@ open class CustomGallery<T> : FrameLayout {
 					MotionEvent.ACTION_POINTER_UP -> {
 					}
 					MotionEvent.ACTION_UP -> {
-						if (view.x < displayMetrics.widthPixels / 2) {
-							moveView(view, viewX)
+						var diff = Math.abs(viewX-view.x)
+						if (diff < displayMetrics.widthPixels / 3 && (view.x + view.width) > displayMetrics.widthPixels / 3) {
+							resetView(view, viewX)
 						} else {
-							moveView(view, displayMetrics.widthPixels.toFloat())
+							if (view.x > displayMetrics.widthPixels / 3) {
+								moveView(view, displayMetrics.widthPixels.toFloat())
+							} else if ((view.x + view.width) < displayMetrics.widthPixels / 3){
+								moveView(view, -1*displayMetrics.widthPixels.toFloat())
+							}
 						}
 						
 					}
 					MotionEvent.ACTION_MOVE -> {
-						moveView(view, event.rawX + dx)
+						moveViewImmediate(view, event.rawX + dx)
 					}
 				}
 				return true
@@ -102,13 +107,23 @@ open class CustomGallery<T> : FrameLayout {
 	}
 	
 	private fun resetView(view: View, posX: Float) {
+		view.animate()
+			.x(posX)
+			.setDuration(50)
+			.start()
+	}
 	
+	private fun moveViewImmediate(view: View, posX: Float) {
+		view.animate()
+			.x(posX)
+			.setDuration(0)
+			.start()
 	}
 	
 	private fun moveView(view: View, posX: Float) {
 		view.animate()
 			.x(posX)
-			.setDuration(0)
+			.setDuration(200)
 			.start()
 	}
 	
@@ -116,30 +131,6 @@ open class CustomGallery<T> : FrameLayout {
 	var dy1: Float = 0f
 	
 	var counter: Int = 0
-	private fun moveView(view: View, dx: Float, dy: Float) {
-		counter++
-		if ((dx1 == dx && dy1 == dy) || ((Math.abs(Math.abs(dx1) - Math.abs(dx))) < 20 && (Math.abs(
-				Math.abs(dy1) - Math.abs(dy)
-		                                                                                           )) < 20)
-		) {
-			return
-		}
-		
-		dx1 = dx
-		dy1 = dy
-		
-		var params: LayoutParams = view.layoutParams as LayoutParams
-		params.leftMargin += dx.toInt()
-		
-		params.topMargin += dy.toInt()
-		Log.i(
-			"*Margin",
-			"dx " + dx + ", dy " + dy + ", leftMargin " + params.leftMargin.toString() + ", topMargin " + params.leftMargin.toString()
-		     )
-		view.layoutParams = params
-		Log.i("counter", "" + counter)
-		
-	}
 	
 	override fun onTouchEvent(event: MotionEvent?): Boolean {
 		return super.onTouchEvent(event)
