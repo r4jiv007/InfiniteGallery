@@ -2,8 +2,8 @@ package com.mantis.customgallery
 
 import android.content.Context
 import android.util.AttributeSet
-import android.util.Log
 import android.view.*
+import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.widget.FrameLayout
 
@@ -84,14 +84,15 @@ open class CustomGallery<T> : FrameLayout {
 					MotionEvent.ACTION_POINTER_UP -> {
 					}
 					MotionEvent.ACTION_UP -> {
-						var diff = Math.abs(viewX-view.x)
-						if (diff < displayMetrics.widthPixels / 3 && (view.x + view.width) > displayMetrics.widthPixels / 3) {
+						val sign = viewX - view.x
+						val diff = Math.abs(viewX - view.x)
+						if (diff < view.width / 2) {
 							resetView(view, viewX)
 						} else {
-							if (view.x > displayMetrics.widthPixels / 3) {
+							if (sign < 0) {
 								moveView(view, displayMetrics.widthPixels.toFloat())
-							} else if ((view.x + view.width) < displayMetrics.widthPixels / 3){
-								moveView(view, -1*displayMetrics.widthPixels.toFloat())
+							} else {
+								moveView(view, -1 * displayMetrics.widthPixels.toFloat())
 							}
 						}
 						
