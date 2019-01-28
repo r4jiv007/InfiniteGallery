@@ -66,17 +66,17 @@ open class CustomGallery : FrameLayout {
         }
         setScale(child, childCount)
         addView(child, 0, getChildLayoutParams())
-        when (childCount) {
-            1 -> child.setBackgroundColor(Color.BLUE)
-            2 -> child.setBackgroundColor(Color.RED)
-            3 -> child.setBackgroundColor(Color.GREEN)
-            4 -> child.setBackgroundColor(Color.CYAN)
-        }
+//        when (childCount) {
+//            1 -> child.setBackgroundColor(Color.BLUE)
+//            2 -> child.setBackgroundColor(Color.RED)
+//            3 -> child.setBackgroundColor(Color.GREEN)
+//            4 -> child.setBackgroundColor(Color.CYAN)
+//        }
     }
 
     private fun stopAnimaiton() {
-            annimHanlder.removeCallbacksAndMessages(null)
-            return
+        annimHanlder.removeCallbacksAndMessages(null)
+        return
 
     }
 
@@ -105,6 +105,7 @@ open class CustomGallery : FrameLayout {
         addView(child, 0, getChildLayoutParams())
         child.animate()
             .x(posX)
+            .alpha( 0f)
             .setDuration(200)
             .start()
 
@@ -252,7 +253,14 @@ open class CustomGallery : FrameLayout {
         handleMarginForViews()
         scaleAllViews()
         reAttachChild(view, posX)
+    }
 
+    private fun makeViewTransparent(view: View) {
+        view.alpha = 0.0f
+    }
+
+    private fun makeViewOpaque(view: View) {
+        view.alpha = 1.0f
     }
 
     private fun reassignTouchListenr(view: View) {
@@ -264,6 +272,9 @@ open class CustomGallery : FrameLayout {
         val count = childCount
         for (i in 0 until count) {
             setScale(getChildAt(i), count - 1 - i, true)
+            if (i < numChildToShow) {
+                makeViewOpaque(getChildAt(i))
+            }
         }
     }
 
