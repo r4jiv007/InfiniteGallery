@@ -4,7 +4,9 @@ import android.animation.Animator
 import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Color
+import android.os.Handler
 import android.util.AttributeSet
+import android.util.DisplayMetrics
 import android.util.Log
 import android.view.*
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
@@ -31,7 +33,11 @@ open class CustomGallery : FrameLayout {
         init()
     }
 
+    lateinit var displayMetrics: DisplayMetrics
+
     private fun init() {
+        displayMetrics = context.resources.displayMetrics
+        annimHanlder = Handler()
         mTouchSlop = ViewConfiguration.get(context).scaledTouchSlop
         layoutInflater = LayoutInflater.from(context)
         layoutParams = LayoutParams(
@@ -42,8 +48,12 @@ open class CustomGallery : FrameLayout {
         addChild()
         addChild()
         addChild()
+        startAnimation()
     }
 
+    lateinit var annimHanlder: Handler
+
+    var pauseAnnim: Boolean = false
 
     val DEFAULT_CHILD_NUM_TO_SHOW: Int = 3
 
@@ -64,6 +74,32 @@ open class CustomGallery : FrameLayout {
         }
     }
 
+    private fun stopAnimaiton() {
+            annimHanlder.removeCallbacksAndMessages(null)
+            return
+
+    }
+
+    private fun startAnimation() {
+        annimHanlder.postDelayed(object : Runnable {
+            override fun run() {
+                moveViewInDirection(direction)
+                annimHanlder.postDelayed(this, 2000)
+            }
+
+        }, 2000)
+    }
+
+
+    private fun moveViewInDirection(dir: Int) {
+        var view = getChildAt(childCount - 1)
+        if (dir == DIRECTION_RIGHT) {
+            moveViewToRight(view, view.x)
+        } else if (dir == DIRECTION_LEFT) {
+            moveViewToLeft(view, view.x)
+        }
+    }
+
     private fun reAttachChild(child: View, posX: Float) {
         setScale(child, numChildToShow - 1)
         addView(child, 0, getChildLayoutParams())
@@ -75,7 +111,6 @@ open class CustomGallery : FrameLayout {
     }
 
     private fun setScale(view: View, pos: Int) {
-
         val scaleVal = 1 - (.05f * pos)
         view.scaleX = scaleVal
         view.scaleY = scaleVal
@@ -86,7 +121,6 @@ open class CustomGallery : FrameLayout {
             setScale(view, pos)
             return
         }
-
         val scaleVal = 1 - (.05f * pos)
         view.animate()
             .scaleX(scaleVal)
@@ -120,12 +154,15 @@ open class CustomGallery : FrameLayout {
 
 
     private fun addTouchListenerToView(view: View) {
-        val displayMetrics = view.context.resources.displayMetrics
         view.setOnTouchListener(object : View.OnTouchListener {
             private var dx: Float = 0.toFloat()
 
             private var viewX: Float = 0f
             override fun onTouch(v: View, event: MotionEvent): Boolean {
+                if (disableTouch) {
+                    return true
+                }
+                stopAnimaiton()
                 when (event.action and MotionEvent.ACTION_MASK) {
                     MotionEvent.ACTION_DOWN -> {
                         dx = view.x - event.rawX
@@ -134,18 +171,19 @@ open class CustomGallery : FrameLayout {
                     MotionEvent.ACTION_POINTER_UP -> {
                     }
                     MotionEvent.ACTION_UP -> {
-                        val sign = viewX - view.x
+                        direction = if (viewX - view.x < 0) 1 else -1
                         val diff = Math.abs(viewX - view.x)
-                        if (diff < view.width / 3) {
+                        if (diff < view.width / 6) {
                             resetView(view, viewX)
                         } else {
-                            if (sign < 0) {
-                                moveView(view, displayMetrics.widthPixels.toFloat(), viewX)
-                            } else {
-                                moveView(view, -1 * displayMetrics.widthPixels.toFloat(), viewX)
+                            if (direction == DIRECTION_RIGHT) {
+                                moveViewToRight(view, viewX)
+                            } else if (direction == DIRECTION_LEFT) {
+                                moveViewToLeft(view, viewX)
                             }
                         }
-
+                        pauseAnnim = false
+                        startAnimation()
                     }
                     MotionEvent.ACTION_MOVE -> {
                         moveViewImmediate(view, event.rawX + dx)
@@ -155,6 +193,14 @@ open class CustomGallery : FrameLayout {
             }
         })
 
+    }
+
+    private fun moveViewToRight(view: View, initialPos: Float) {
+        moveView(view, displayMetrics.widthPixels.toFloat(), initialPos)
+    }
+
+    private fun moveViewToLeft(view: View, initialPos: Float) {
+        moveView(view, -1 * displayMetrics.widthPixels.toFloat(), initialPos)
     }
 
     private fun resetView(view: View, posX: Float) {
@@ -172,6 +218,8 @@ open class CustomGallery : FrameLayout {
             .start()
     }
 
+    var disableTouch: Boolean = false
+
     private fun moveView(view: View, posX: Float, initialPos: Float) {
         view.animate()
             .x(posX)
@@ -183,12 +231,15 @@ open class CustomGallery : FrameLayout {
                 override fun onAnimationEnd(animation: Animator?) {
                     moveViewToBack(view, initialPos)
                     view.animate().setListener(null)
+                    disableTouch = false
                 }
 
                 override fun onAnimationCancel(animation: Animator?) {
+                    disableTouch = false
                 }
 
                 override fun onAnimationStart(animation: Animator?) {
+                    disableTouch = true
                 }
 
             })
