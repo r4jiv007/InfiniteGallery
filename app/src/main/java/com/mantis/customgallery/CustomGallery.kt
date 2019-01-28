@@ -1,6 +1,7 @@
 package com.mantis.customgallery
 
 import android.animation.Animator
+import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Color
 import android.util.AttributeSet
@@ -8,6 +9,7 @@ import android.util.Log
 import android.view.*
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.widget.FrameLayout
+
 
 open class CustomGallery<T> : FrameLayout {
 
@@ -40,17 +42,20 @@ open class CustomGallery<T> : FrameLayout {
             (Utils.convertDpToPixel(300f, context)),
             Utils.convertDpToPixel(300f, context)
         )
-        addChild()
-        addChild()
-        addChild()
-        addChild()
+        reAttachChild()
+        reAttachChild()
+        reAttachChild()
+        reAttachChild()
     }
 
     var viewList = mutableListOf<View>()
 
-    private fun addChild() {
+    val DEFAULT_CHILD_NUM_TO_SHOW: Int = 3
+
+    var numChildToShow: Int = DEFAULT_CHILD_NUM_TO_SHOW
+
+    private fun reAttachChild() {
         val child: FrameLayout = layoutInflater.inflate(R.layout.item_view, null) as FrameLayout
-        viewList.add(child)
         addTouchListenerToView(child)
         setScale(child, childCount)
         addView(child, 0, getChildLayoutParams())
@@ -62,10 +67,9 @@ open class CustomGallery<T> : FrameLayout {
         }
     }
 
-    private fun addChild(child: View, posX: Float) {
-        viewList.add(child)
+    private fun reAttachChild(child: View, posX: Float) {
         setScale(child, childCount)
-        addView(child, 0, getChildLayoutParams())
+        addView(child, 0, getLayoutParamsForRemovedChild())
         child.animate()
             .x(posX)
             .setDuration(200)
@@ -74,24 +78,54 @@ open class CustomGallery<T> : FrameLayout {
     }
 
     private fun setScale(view: View, pos: Int) {
-        view.scaleX = 1 - (.05f * pos)
-        view.scaleY = 1 - (.05f * pos)
+
+        val scaleVal = 1 - (.05f * pos)
+        view.scaleX = scaleVal
+        view.scaleY = scaleVal
+    }
+
+    private fun setScale(view: View, pos: Int, animate: Boolean) {
+        if (!animate) {
+            setScale(view, pos)
+            return
+        }
+
+        val scaleVal = 1 - (.05f * pos)
+        view.animate()
+            .scaleX(scaleVal)
+            .scaleY(scaleVal)
+            .setDuration(200)
+            .start()
     }
 
     private fun getChildLayoutParams(): LayoutParams {
 
         val layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT)
         layoutParams.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-        layoutParams.topMargin = childCount * Utils.convertDpToPixel(20f, context)
+        val pos = if (childCount >= numChildToShow ) numChildToShow - 1 else childCount
+        layoutParams.topMargin = pos * Utils.convertDpToPixel(20f, context)
+        return layoutParams
+    }
+
+    private fun getLayoutParamsForRemovedChild(): LayoutParams {
+
+        val layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT)
+        layoutParams.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+        layoutParams.topMargin = (numChildToShow -1 ) * Utils.convertDpToPixel(20f, context)
         return layoutParams
     }
 
     private fun updateChildLayoutParams(view: View, pos: Int) {
 
         val layoutParams = view.layoutParams as FrameLayout.LayoutParams
-        layoutParams.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-        layoutParams.topMargin = pos * Utils.convertDpToPixel(20f, context)
-        view.layoutParams = layoutParams
+
+        val animator = ValueAnimator.ofInt(layoutParams.topMargin, pos * Utils.convertDpToPixel(20f, context))
+        animator.addUpdateListener { valueAnimator ->
+            layoutParams.topMargin = valueAnimator.animatedValue as Int
+            view.layoutParams = layoutParams
+        }
+        animator.duration = 200
+        animator.start()
     }
 
 
@@ -176,13 +210,13 @@ open class CustomGallery<T> : FrameLayout {
         removeView(view)
         handleMarginForViews()
         scaleAllViews()
-        addChild(view, posX)
+        reAttachChild(view, posX)
     }
 
     private fun scaleAllViews() {
         val count = childCount
         for (i in 0 until count) {
-            setScale(getChildAt(i), count - 1 - i)
+            setScale(getChildAt(i), count - 1 - i, true)
         }
     }
 
