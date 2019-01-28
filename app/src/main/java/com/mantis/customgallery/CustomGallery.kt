@@ -11,13 +11,9 @@ import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.widget.FrameLayout
 
 
-open class CustomGallery<T> : FrameLayout {
+open class CustomGallery : FrameLayout {
 
     // member definition
-
-    var childLayoutId: Int = 0
-
-    val itemList: MutableList<T> = mutableListOf()
 
 
     private var mTouchSlop: Int = 0
@@ -42,21 +38,22 @@ open class CustomGallery<T> : FrameLayout {
             (Utils.convertDpToPixel(300f, context)),
             Utils.convertDpToPixel(300f, context)
         )
-        reAttachChild()
-        reAttachChild()
-        reAttachChild()
-        reAttachChild()
+        addChild()
+        addChild()
+        addChild()
+        addChild()
     }
 
-    var viewList = mutableListOf<View>()
 
     val DEFAULT_CHILD_NUM_TO_SHOW: Int = 3
 
     var numChildToShow: Int = DEFAULT_CHILD_NUM_TO_SHOW
 
-    private fun reAttachChild() {
+    private fun addChild() {
         val child: FrameLayout = layoutInflater.inflate(R.layout.item_view, null) as FrameLayout
-        addTouchListenerToView(child)
+        if (childCount == 0) {
+            addTouchListenerToView(child)
+        }
         setScale(child, childCount)
         addView(child, 0, getChildLayoutParams())
         when (childCount) {
@@ -68,8 +65,8 @@ open class CustomGallery<T> : FrameLayout {
     }
 
     private fun reAttachChild(child: View, posX: Float) {
-        setScale(child, childCount)
-        addView(child, 0, getLayoutParamsForRemovedChild())
+        setScale(child, numChildToShow - 1)
+        addView(child, 0, getChildLayoutParams())
         child.animate()
             .x(posX)
             .setDuration(200)
@@ -98,27 +95,20 @@ open class CustomGallery<T> : FrameLayout {
             .start()
     }
 
-    private fun getChildLayoutParams(): LayoutParams {
+    val DIRECTION_RIGHT = 1
+    val DIRECTION_LEFT = -1
+    var direction: Int = DIRECTION_RIGHT
 
+    fun getChildLayoutParams(): LayoutParams {
         val layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT)
         layoutParams.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-        val pos = if (childCount >= numChildToShow ) numChildToShow - 1 else childCount
+        val pos = if (childCount >= numChildToShow) numChildToShow - 1 else childCount
         layoutParams.topMargin = pos * Utils.convertDpToPixel(20f, context)
         return layoutParams
     }
 
-    private fun getLayoutParamsForRemovedChild(): LayoutParams {
-
-        val layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT)
-        layoutParams.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-        layoutParams.topMargin = (numChildToShow -1 ) * Utils.convertDpToPixel(20f, context)
-        return layoutParams
-    }
-
     private fun updateChildLayoutParams(view: View, pos: Int) {
-
         val layoutParams = view.layoutParams as FrameLayout.LayoutParams
-
         val animator = ValueAnimator.ofInt(layoutParams.topMargin, pos * Utils.convertDpToPixel(20f, context))
         animator.addUpdateListener { valueAnimator ->
             layoutParams.topMargin = valueAnimator.animatedValue as Int
@@ -130,7 +120,6 @@ open class CustomGallery<T> : FrameLayout {
 
 
     private fun addTouchListenerToView(view: View) {
-
         val displayMetrics = view.context.resources.displayMetrics
         view.setOnTouchListener(object : View.OnTouchListener {
             private var dx: Float = 0.toFloat()
@@ -208,9 +197,16 @@ open class CustomGallery<T> : FrameLayout {
 
     private fun moveViewToBack(view: View, posX: Float) {
         removeView(view)
+        reassignTouchListenr(view)
         handleMarginForViews()
         scaleAllViews()
         reAttachChild(view, posX)
+
+    }
+
+    private fun reassignTouchListenr(view: View) {
+        view.setOnTouchListener(null)
+        addTouchListenerToView(this.getChildAt(childCount - 1))
     }
 
     private fun scaleAllViews() {
@@ -226,10 +222,5 @@ open class CustomGallery<T> : FrameLayout {
             updateChildLayoutParams(getChildAt(i), count - 1 - i)
         }
     }
-
-    override fun onTouchEvent(event: MotionEvent?): Boolean {
-        return super.onTouchEvent(event)
-    }
-
 
 }
