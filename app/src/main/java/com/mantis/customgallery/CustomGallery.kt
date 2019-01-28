@@ -3,13 +3,12 @@ package com.mantis.customgallery
 import android.animation.Animator
 import android.animation.ValueAnimator
 import android.content.Context
-import android.graphics.Color
 import android.os.Handler
 import android.util.AttributeSet
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.*
-import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.widget.FrameLayout
 
 
@@ -44,11 +43,7 @@ open class CustomGallery : FrameLayout {
             (Utils.convertDpToPixel(300f, context)),
             Utils.convertDpToPixel(300f, context)
         )
-        addChild()
-        addChild()
-        addChild()
-        addChild()
-        startAnimation()
+
     }
 
     lateinit var annimHanlder: Handler
@@ -105,7 +100,7 @@ open class CustomGallery : FrameLayout {
         addView(child, 0, getChildLayoutParams())
         child.animate()
             .x(posX)
-            .alpha( 0f)
+            .alpha(0f)
             .setDuration(200)
             .start()
 
@@ -134,11 +129,25 @@ open class CustomGallery : FrameLayout {
     val DIRECTION_LEFT = -1
     var direction: Int = DIRECTION_RIGHT
 
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+
+        this.post {
+            addChild()
+            addChild()
+            addChild()
+            addChild()
+            startAnimation()
+        }
+    }
+
     fun getChildLayoutParams(): LayoutParams {
-        val layoutParams = LayoutParams(WRAP_CONTENT, WRAP_CONTENT)
+        val layoutParams = LayoutParams(MATCH_PARENT, height - (numChildToShow * Utils.convertDpToPixel(20f, context)))
         layoutParams.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
         val pos = if (childCount >= numChildToShow) numChildToShow - 1 else childCount
         layoutParams.topMargin = pos * Utils.convertDpToPixel(20f, context)
+        layoutParams.leftMargin = Utils.convertDpToPixel(10f, context)
+        layoutParams.rightMargin = Utils.convertDpToPixel(10f, context)
         return layoutParams
     }
 
