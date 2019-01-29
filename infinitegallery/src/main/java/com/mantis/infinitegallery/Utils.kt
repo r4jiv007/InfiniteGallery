@@ -1,4 +1,4 @@
-package com.mantis.customgallery
+package com.mantis.infinitegallery
 
 import android.content.Context
 import android.util.DisplayMetrics

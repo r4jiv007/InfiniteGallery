@@ -1,4 +1,4 @@
-package com.mantis.customgallery
+package com.mantis.infinitegallery
 
 import android.animation.Animator
 import android.animation.ValueAnimator
@@ -7,19 +7,35 @@ import android.os.Handler
 import android.util.AttributeSet
 import android.util.DisplayMetrics
 import android.util.Log
-import android.view.*
+import android.view.Gravity
+import android.view.MotionEvent
+import android.view.View
+import android.view.ViewConfiguration
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.widget.FrameLayout
 
 
-open class CustomGallery : FrameLayout {
+open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
 
     // member definition
 
 
     private var mTouchSlop: Int = 0
-    private lateinit var layoutInflater: LayoutInflater
     private lateinit var layoutParams: LayoutParams
+    lateinit var annimHanlder: Handler
+
+    var pauseAnnim: Boolean = false
+
+    val DEFAULT_CHILD_NUM_TO_SHOW: Int = 3
+
+    var numChildToShow: Int = DEFAULT_CHILD_NUM_TO_SHOW
+
+    var childViewList = mutableListOf<T>()
+
+
+    val DIRECTION_RIGHT = 1
+    val DIRECTION_LEFT = -1
+    var direction: Int = DIRECTION_RIGHT
 
     // constructor definition
 
@@ -38,7 +54,6 @@ open class CustomGallery : FrameLayout {
         displayMetrics = context.resources.displayMetrics
         annimHanlder = Handler()
         mTouchSlop = ViewConfiguration.get(context).scaledTouchSlop
-        layoutInflater = LayoutInflater.from(context)
         layoutParams = LayoutParams(
             (Utils.convertDpToPixel(300f, context)),
             Utils.convertDpToPixel(300f, context)
@@ -46,27 +61,46 @@ open class CustomGallery : FrameLayout {
 
     }
 
-    lateinit var annimHanlder: Handler
+    fun addChild(view: T) {
+        childViewList.add(view)
+    }
 
-    var pauseAnnim: Boolean = false
 
-    val DEFAULT_CHILD_NUM_TO_SHOW: Int = 3
+    fun addChilds(views: MutableList<T>): InfiniteGallery<T> {
+        childViewList = views
+        return this
+    }
 
-    var numChildToShow: Int = DEFAULT_CHILD_NUM_TO_SHOW
+    fun display() {
+        post {
+            for (child in childViewList) {
+                attachChild(child.bindView())
+            }
+            startAnimation()
+        }
+    }
 
-    private fun addChild() {
-        val child: FrameLayout = layoutInflater.inflate(R.layout.item_view, null) as FrameLayout
+    private fun attachChild(child: View) {
         if (childCount == 0) {
             addTouchListenerToView(child)
         }
         setScale(child, childCount)
         addView(child, 0, getChildLayoutParams())
-//        when (childCount) {
-//            1 -> child.setBackgroundColor(Color.BLUE)
-//            2 -> child.setBackgroundColor(Color.RED)
-//            3 -> child.setBackgroundColor(Color.GREEN)
-//            4 -> child.setBackgroundColor(Color.CYAN)
-//        }
+        if (childCount > numChildToShow) {
+            child.alpha = 0.0f
+        }
+    }
+
+    private fun reAttachChild(child: View, posX: Float) {
+        setScale(child, numChildToShow - 1)
+        addView(child, 0, getChildLayoutParams())
+        child.animate()
+            .x(posX).duration = 200
+
+        if (childViewList.size > numChildToShow) {
+            child.animate().alpha(0.0f)
+        }
+        child.animate().start()
     }
 
     private fun stopAnimaiton() {
@@ -95,16 +129,6 @@ open class CustomGallery : FrameLayout {
         }
     }
 
-    private fun reAttachChild(child: View, posX: Float) {
-        setScale(child, numChildToShow - 1)
-        addView(child, 0, getChildLayoutParams())
-        child.animate()
-            .x(posX)
-            .alpha(0f)
-            .setDuration(200)
-            .start()
-
-    }
 
     private fun setScale(view: View, pos: Int) {
         val scaleVal = 1 - (.05f * pos)
@@ -112,34 +136,6 @@ open class CustomGallery : FrameLayout {
         view.scaleY = scaleVal
     }
 
-    private fun setScale(view: View, pos: Int, animate: Boolean) {
-        if (!animate) {
-            setScale(view, pos)
-            return
-        }
-        val scaleVal = 1 - (.05f * pos)
-        view.animate()
-            .scaleX(scaleVal)
-            .scaleY(scaleVal)
-            .setDuration(200)
-            .start()
-    }
-
-    val DIRECTION_RIGHT = 1
-    val DIRECTION_LEFT = -1
-    var direction: Int = DIRECTION_RIGHT
-
-    override fun onAttachedToWindow() {
-        super.onAttachedToWindow()
-
-        this.post {
-            addChild()
-            addChild()
-            addChild()
-            addChild()
-            startAnimation()
-        }
-    }
 
     fun getChildLayoutParams(): LayoutParams {
         val layoutParams = LayoutParams(MATCH_PARENT, height - (numChildToShow * Utils.convertDpToPixel(20f, context)))
@@ -153,13 +149,24 @@ open class CustomGallery : FrameLayout {
 
     private fun updateChildLayoutParams(view: View, pos: Int) {
         val layoutParams = view.layoutParams as FrameLayout.LayoutParams
-        val animator = ValueAnimator.ofInt(layoutParams.topMargin, pos * Utils.convertDpToPixel(20f, context))
+        val finalPos = if (pos >= numChildToShow) numChildToShow - 1 else pos
+        val animator = ValueAnimator.ofInt(layoutParams.topMargin, finalPos * Utils.convertDpToPixel(20f, context))
         animator.addUpdateListener { valueAnimator ->
             layoutParams.topMargin = valueAnimator.animatedValue as Int
             view.layoutParams = layoutParams
         }
         animator.duration = 200
         animator.start()
+    }
+
+    private fun updateChildScale(view: View, pos: Int) {
+        val finalPos = if (pos >= numChildToShow) numChildToShow - 1 else pos
+        val scaleVal = 1 - (.05f * finalPos)
+        view.animate()
+            .scaleX(scaleVal)
+            .scaleY(scaleVal)
+            .setDuration(200)
+            .start()
     }
 
 
@@ -280,8 +287,8 @@ open class CustomGallery : FrameLayout {
     private fun scaleAllViews() {
         val count = childCount
         for (i in 0 until count) {
-            setScale(getChildAt(i), count - 1 - i, true)
-            if (i < numChildToShow) {
+            updateChildScale(getChildAt(i), count - 1 - i)
+            if ((i >= count - numChildToShow)) {
                 makeViewOpaque(getChildAt(i))
             }
         }
