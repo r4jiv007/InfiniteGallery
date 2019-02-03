@@ -65,6 +65,11 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
         childViewList.add(view)
     }
 
+    fun updateGallery(views: MutableList<T>){
+        addChilds(views)
+        removeAllViews()
+        display()
+    }
 
     fun addChilds(views: MutableList<T>): InfiniteGallery<T> {
         childViewList = views
