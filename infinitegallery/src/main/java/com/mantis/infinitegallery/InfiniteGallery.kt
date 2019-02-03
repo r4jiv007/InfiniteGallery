@@ -15,7 +15,7 @@ import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.widget.FrameLayout
 
 
-open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
+open class InfiniteGallery<S, T : BaseInfiniteView<S>> : FrameLayout {
 
     // member definition
 
@@ -31,7 +31,7 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
     var numChildToShow: Int = DEFAULT_CHILD_NUM_TO_SHOW
 
     var childViewList = mutableListOf<T>()
-
+    var itemList = mutableListOf<S>()
 
     val DIRECTION_RIGHT = 1
     val DIRECTION_LEFT = -1
@@ -65,16 +65,28 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
         childViewList.add(view)
     }
 
+//    private fun getChild(context: Context) :T{
+//
+//    }
 
-    fun addChilds(views: MutableList<T>): InfiniteGallery<T> {
+    inline fun <reified T> getChild(context: Context): T {
+       return  T::class.java.newInstance()
+    }
+
+    fun addChilds(views: MutableList<T>): InfiniteGallery<S, T> {
         childViewList = views
         return this
+    }
+    fun postItemList(dataList: MutableList<S>) {
+        this.itemList = dataList
     }
 
     fun display() {
         post {
-            for (child in childViewList) {
-                attachChild(child.bindView())
+            removeAllViews()
+            for (item in itemList) {
+
+                attachChild((getChild(context)as BaseInfiniteView).bindView(item))
             }
             startAnimation()
         }

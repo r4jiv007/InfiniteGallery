@@ -6,8 +6,8 @@ import android.widget.ImageView
 import com.bumptech.glide.Glide
 import com.mantis.infinitegallery.BaseInfiniteView
 
-class ChildView(context: Context, val image: Image) : BaseInfiniteView(context) {
-    override fun bindView(): View {
+class ChildView(context: Context) : BaseInfiniteView<Image>(context) {
+    override fun bindView(image :Image): View {
         val view = inflateView(R.layout.item_view)
         val imageView = view.findViewById<ImageView>(R.id.ivImage)
         Glide.with(imageView.context).load(image.url).into(imageView)
