@@ -13,6 +13,7 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.widget.FrameLayout
+import android.widget.ScrollView
 
 
 open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
@@ -65,7 +66,7 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
         childViewList.add(view)
     }
 
-    fun updateGallery(views: MutableList<T>){
+    fun updateGallery(views: MutableList<T>) {
         addChilds(views)
         removeAllViews()
         display()
@@ -174,10 +175,17 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
             .start()
     }
 
+     var parentView: ScrollView?=null
+
+    fun setParentScrollView(scrollView: View?): InfiniteGallery<T> {
+        parentView = scrollView as ScrollView?
+        return this
+    }
 
     private fun addTouchListenerToView(view: View) {
         view.setOnTouchListener(object : View.OnTouchListener {
-            private var dx: Float = 0.toFloat()
+            private var dx: Float = 0f
+            private var dy: Float = 0f
 
             private var viewX: Float = 0f
             override fun onTouch(v: View, event: MotionEvent): Boolean {
@@ -188,11 +196,14 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
                 when (event.action and MotionEvent.ACTION_MASK) {
                     MotionEvent.ACTION_DOWN -> {
                         dx = view.x - event.rawX
+                        dy = view.y - event.rawY
                         viewX = view.x
+                        Log.i("touch", "action-down")
                     }
                     MotionEvent.ACTION_POINTER_UP -> {
                     }
                     MotionEvent.ACTION_UP -> {
+                        Log.i("touch", "action-up")
                         direction = if (viewX - view.x < 0) 1 else -1
                         val diff = Math.abs(viewX - view.x)
                         if (diff < view.width / 6) {
@@ -206,9 +217,17 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
                         }
                         pauseAnnim = false
                         startAnimation()
+
+                        parentView?.requestDisallowInterceptTouchEvent(false)
                     }
                     MotionEvent.ACTION_MOVE -> {
+                        if (!(Math.abs(event.rawY + dy) < Math.abs(event.rawX + dx) && Math.abs(event.rawX + dx) > 35f)) {
+                            return true
+                        }
+
+                        parentView?.requestDisallowInterceptTouchEvent(true)
                         moveViewImmediate(view, event.rawX + dx)
+
                     }
                 }
                 return true
@@ -251,7 +270,7 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
                 }
 
                 override fun onAnimationEnd(animation: Animator?) {
-                    moveViewToBack(view, initialPos)
+                    view.postDelayed({ moveViewToBack(view, initialPos) }, 50)
                     view.animate().setListener(null)
                     disableTouch = false
                 }

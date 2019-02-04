@@ -25,7 +25,7 @@ class MainActivity : AppCompatActivity() {
             listOfView.add(ChildView(this, image))
         }
         val igGallery = findViewById<InfiniteGallery<ChildView>>(R.id.igGallery)
-        igGallery.addChilds(listOfView).display()
+        igGallery.setParentScrollView(findViewById(R.id.svParentScroll)).addChilds(listOfView).display()
 
     }
 }
