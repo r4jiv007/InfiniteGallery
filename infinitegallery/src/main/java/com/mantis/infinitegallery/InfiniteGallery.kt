@@ -222,12 +222,13 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
                     }
                     MotionEvent.ACTION_UP -> {
                         Log.i("touch", "action-up")
-                        if (System.currentTimeMillis() - clickTime <= 100) {
+
+                        direction = if (viewX - view.x < 0) 1 else -1
+                        val diff = Math.abs(viewX - view.x)
+                        if (System.currentTimeMillis() - clickTime <= 100 && diff == 0f) {
                             clickListener.onItemClicked(childViewList[view.tag as Int].getItem())
                             return true
                         }
-                        direction = if (viewX - view.x < 0) 1 else -1
-                        val diff = Math.abs(viewX - view.x)
                         if (diff < view.width / 6) {
                             resetView(view, viewX)
                         } else {
