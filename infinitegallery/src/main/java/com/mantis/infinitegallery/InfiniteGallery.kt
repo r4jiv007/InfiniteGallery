@@ -175,7 +175,7 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
             .start()
     }
 
-     var parentView: ScrollView?=null
+    var parentView: ScrollView? = null
 
     fun setParentScrollView(scrollView: View?): InfiniteGallery<T> {
         parentView = scrollView as ScrollView?
@@ -221,7 +221,7 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
                         parentView?.requestDisallowInterceptTouchEvent(false)
                     }
                     MotionEvent.ACTION_MOVE -> {
-                        if (!(Math.abs(event.rawY + dy) < Math.abs(event.rawX + dx) && Math.abs(event.rawX + dx) > 35f)) {
+                        if (!(Math.abs(event.rawY + dy) < Math.abs(event.rawX + dx) && Math.abs(event.rawX + dx) > 33f)) {
                             return true
                         }
 
