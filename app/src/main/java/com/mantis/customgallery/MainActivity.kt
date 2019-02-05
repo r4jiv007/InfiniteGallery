@@ -31,7 +31,7 @@ class MainActivity : AppCompatActivity(),InfiniteGallery.OnItemClickListener {
         }
         val igGallery = findViewById<InfiniteGallery<ChildView>>(R.id.igGallery)
 
-        igGallery.setOnClickListener(this).setParentScrollView(findViewById(R.id.svParentScroll)).addChilds(listOfView).display()
+        igGallery.setOnItemClickListener(this).setParentScrollView(findViewById(R.id.svParentScroll)).addChilds(listOfView).display()
 
 
     }

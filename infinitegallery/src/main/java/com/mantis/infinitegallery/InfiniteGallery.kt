@@ -91,7 +91,7 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
 
     lateinit var clickListener: OnItemClickListener
 
-    fun setOnClickListener(clickListener: OnItemClickListener): InfiniteGallery<T> {
+    fun setOnItemClickListener(clickListener: OnItemClickListener): InfiniteGallery<T> {
         this.clickListener = clickListener
         return this
     }
