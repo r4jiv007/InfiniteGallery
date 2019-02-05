@@ -227,6 +227,7 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
                         val diff = Math.abs(viewX - view.x)
                         if (System.currentTimeMillis() - clickTime <= 100 && diff == 0f) {
                             clickListener.onItemClicked(childViewList[view.tag as Int].getItem())
+                            resetView(view, viewX)
                             return true
                         }
                         if (diff < view.width / 6) {
