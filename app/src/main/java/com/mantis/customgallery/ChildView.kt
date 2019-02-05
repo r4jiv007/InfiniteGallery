@@ -6,7 +6,7 @@ import android.widget.ImageView
 import com.bumptech.glide.Glide
 import com.mantis.infinitegallery.BaseInfiniteView
 
-class ChildView(context: Context, val image: Image) : BaseInfiniteView(context) {
+class ChildView(context: Context, val image: Image) : BaseInfiniteView(context, image) {
     override fun bindView(): View {
         val view = inflateView(R.layout.item_view)
         val imageView = view.findViewById<ImageView>(R.id.ivImage)

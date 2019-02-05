@@ -2,9 +2,14 @@ package com.mantis.customgallery
 
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
+import android.widget.Toast
 import com.mantis.infinitegallery.InfiniteGallery
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(),InfiniteGallery.OnItemClickListener {
+
+    override fun onItemClicked(item: Any) {
+        Toast.makeText(this,(item as  Image).url,Toast.LENGTH_LONG).show()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,7 +30,9 @@ class MainActivity : AppCompatActivity() {
             listOfView.add(ChildView(this, image))
         }
         val igGallery = findViewById<InfiniteGallery<ChildView>>(R.id.igGallery)
-        igGallery.setParentScrollView(findViewById(R.id.svParentScroll)).addChilds(listOfView).display()
+
+        igGallery.setOnClickListener(this).setParentScrollView(findViewById(R.id.svParentScroll)).addChilds(listOfView).display()
+
 
     }
 }

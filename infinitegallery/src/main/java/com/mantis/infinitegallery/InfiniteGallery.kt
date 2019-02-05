@@ -18,6 +18,9 @@ import android.widget.ScrollView
 
 open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
 
+    interface OnItemClickListener {
+        fun onItemClicked(item: Any)
+    }
     // member definition
 
 
@@ -79,11 +82,25 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
 
     fun display() {
         post {
-            for (child in childViewList) {
-                attachChild(child.bindView())
+            for (pos in 0 until childViewList.size) {
+                attachChild(initChild(childViewList[pos], pos))
             }
             startAnimation()
         }
+    }
+
+    lateinit var clickListener: OnItemClickListener
+
+    fun setOnClickListener(clickListener: OnItemClickListener): InfiniteGallery<T> {
+        this.clickListener = clickListener
+        return this
+    }
+
+    private fun initChild(child: BaseInfiniteView, pos: Int): View {
+        val view = child.bindView()
+        view.tag = pos
+        view.setOnClickListener { clickListener.onItemClicked(child.getItem()) }
+        return view
     }
 
     private fun attachChild(child: View) {
@@ -186,7 +203,7 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
         view.setOnTouchListener(object : View.OnTouchListener {
             private var dx: Float = 0f
             private var dy: Float = 0f
-
+            private var clickTime: Long = 0
             private var viewX: Float = 0f
             override fun onTouch(v: View, event: MotionEvent): Boolean {
                 if (disableTouch) {
@@ -195,6 +212,7 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
                 stopAnimaiton()
                 when (event.action and MotionEvent.ACTION_MASK) {
                     MotionEvent.ACTION_DOWN -> {
+                        clickTime = System.currentTimeMillis()
                         dx = view.x - event.rawX
                         dy = view.y - event.rawY
                         viewX = view.x
@@ -204,6 +222,10 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
                     }
                     MotionEvent.ACTION_UP -> {
                         Log.i("touch", "action-up")
+                        if (System.currentTimeMillis() - clickTime <= 100) {
+                            clickListener.onItemClicked(childViewList[view.tag as Int].getItem())
+                            return true
+                        }
                         direction = if (viewX - view.x < 0) 1 else -1
                         val diff = Math.abs(viewX - view.x)
                         if (diff < view.width / 6) {
