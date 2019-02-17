@@ -16,7 +16,14 @@ import android.widget.FrameLayout
 import android.widget.ScrollView
 
 
-open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
+open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout, View.OnAttachStateChangeListener {
+
+    override fun onViewDetachedFromWindow(v: View?) {
+        stopAnimaiton()
+    }
+
+    override fun onViewAttachedToWindow(v: View?) {
+    }
 
     interface OnItemClickListener {
         fun onItemClicked(item: Any)
@@ -25,7 +32,6 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
 
 
     private var mTouchSlop: Int = 0
-    private lateinit var layoutParams: LayoutParams
     lateinit var annimHanlder: Handler
 
     var pauseAnnim: Boolean = false
@@ -58,15 +64,16 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
         displayMetrics = context.resources.displayMetrics
         annimHanlder = Handler()
         mTouchSlop = ViewConfiguration.get(context).scaledTouchSlop
-        layoutParams = LayoutParams(
-            (Utils.convertDpToPixel(300f, context)),
-            Utils.convertDpToPixel(300f, context)
-        )
 
     }
 
     fun addChild(view: T) {
         childViewList.add(view)
+        if (numChildToShow < 3) {
+            numChildToShow++
+        } else {
+            numChildToShow = DEFAULT_CHILD_NUM_TO_SHOW
+        }
     }
 
     fun updateGallery(views: MutableList<T>) {
@@ -77,16 +84,27 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
 
     fun addChilds(views: MutableList<T>): InfiniteGallery<T> {
         childViewList = views
+        numChildToShow = if (childViewList.size > 3) DEFAULT_CHILD_NUM_TO_SHOW else childViewList.size
         return this
     }
 
     fun display() {
         post {
-            for (pos in 0 until childViewList.size) {
-                attachChild(initChild(childViewList[pos], pos))
-            }
-            startAnimation()
+            attachAllChild()
+//            startAnimation()
         }
+    }
+
+    private fun attachAllChild() {
+        for (pos in 0 until childViewList.size) {
+            attachChild(initChild(childViewList[pos], pos))
+        }
+    }
+
+    fun resetGallery() {
+        stopAnimaiton()
+        removeAllViews()
+        attachAllChild()
     }
 
     lateinit var clickListener: OnItemClickListener
@@ -96,29 +114,45 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
         return this
     }
 
-    private fun initChild(child: BaseInfiniteView, pos: Int): View {
-        val view = child.bindView()
-        view.tag = pos
-        view.setOnClickListener { clickListener.onItemClicked(child.getItem()) }
+    private fun initChild(child: BaseInfiniteView?, pos: Int): View? {
+        val view = child?.bindView()
+        view?.tag = pos
+        view?.setOnClickListener { clickListener.onItemClicked(child.getItem()) }
+        if (pos == 0) {
+            view?.addOnAttachStateChangeListener(object : OnAttachStateChangeListener {
+                override fun onViewDetachedFromWindow(v: View) {
+
+                }
+
+                override fun onViewAttachedToWindow(v: View) {
+                    viewX = v.x
+                    view.removeOnAttachStateChangeListener(this)
+
+                }
+
+            })
+        }
         return view
     }
 
-    private fun attachChild(child: View) {
+    private fun attachChild(child: View?) {
         if (childCount == 0) {
             addTouchListenerToView(child)
+
         }
         setScale(child, childCount)
         addView(child, 0, getChildLayoutParams())
         if (childCount > numChildToShow) {
-            child.alpha = 0.0f
+            child?.alpha = 0.0f
         }
+
     }
 
     private fun reAttachChild(child: View, posX: Float) {
         setScale(child, numChildToShow - 1)
         addView(child, 0, getChildLayoutParams())
         child.animate()
-            .x(posX).duration = 200
+                .x(posX).duration = 200
 
         if (childViewList.size > numChildToShow) {
             child.animate().alpha(0.0f)
@@ -126,13 +160,24 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
         child.animate().start()
     }
 
-    private fun stopAnimaiton() {
+    fun stopAnimaiton() {
         annimHanlder.removeCallbacksAndMessages(null)
         return
 
     }
 
-    private fun startAnimation() {
+    fun startAnimation() {
+        stopAnimaiton()
+        postDelayed(object : Runnable {
+            override fun run() {
+                start()
+            }
+
+        }, 50)
+
+    }
+
+    private fun start() {
         annimHanlder.postDelayed(object : Runnable {
             override fun run() {
                 moveViewInDirection(direction)
@@ -141,7 +186,6 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
 
         }, 2000)
     }
-
 
     private fun moveViewInDirection(dir: Int) {
         var view = getChildAt(childCount - 1)
@@ -153,10 +197,10 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
     }
 
 
-    private fun setScale(view: View, pos: Int) {
+    private fun setScale(view: View?, pos: Int) {
         val scaleVal = 1 - (.05f * pos)
-        view.scaleX = scaleVal
-        view.scaleY = scaleVal
+        view?.scaleX = scaleVal
+        view?.scaleY = scaleVal
     }
 
 
@@ -165,13 +209,12 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
         layoutParams.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
         val pos = if (childCount >= numChildToShow) numChildToShow - 1 else childCount
         layoutParams.topMargin = pos * Utils.convertDpToPixel(20f, context)
-        layoutParams.leftMargin = Utils.convertDpToPixel(10f, context)
-        layoutParams.rightMargin = Utils.convertDpToPixel(10f, context)
+
         return layoutParams
     }
 
-    private fun updateChildLayoutParams(view: View, pos: Int) {
-        val layoutParams = view.layoutParams as FrameLayout.LayoutParams
+    private fun updateChildLayoutParams(view: View?, pos: Int) {
+        val layoutParams = view?.layoutParams as FrameLayout.LayoutParams
         val finalPos = if (pos >= numChildToShow) numChildToShow - 1 else pos
         val animator = ValueAnimator.ofInt(layoutParams.topMargin, finalPos * Utils.convertDpToPixel(20f, context))
         animator.addUpdateListener { valueAnimator ->
@@ -182,14 +225,14 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
         animator.start()
     }
 
-    private fun updateChildScale(view: View, pos: Int) {
+    private fun updateChildScale(view: View?, pos: Int) {
         val finalPos = if (pos >= numChildToShow) numChildToShow - 1 else pos
         val scaleVal = 1 - (.05f * finalPos)
-        view.animate()
-            .scaleX(scaleVal)
-            .scaleY(scaleVal)
-            .setDuration(200)
-            .start()
+        view?.animate()
+                ?.scaleX(scaleVal)
+                ?.scaleY(scaleVal)
+                ?.setDuration(200)
+                ?.start()
     }
 
     var parentView: ScrollView? = null
@@ -199,12 +242,12 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
         return this
     }
 
-    private fun addTouchListenerToView(view: View) {
-        view.setOnTouchListener(object : View.OnTouchListener {
+    private var viewX: Float = 0f
+    private fun addTouchListenerToView(view: View?) {
+        view?.setOnTouchListener(object : View.OnTouchListener {
             private var dx: Float = 0f
             private var dy: Float = 0f
             private var clickTime: Long = 0
-            private var viewX: Float = 0f
             override fun onTouch(v: View, event: MotionEvent): Boolean {
                 if (disableTouch) {
                     return true
@@ -215,7 +258,6 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
                         clickTime = System.currentTimeMillis()
                         dx = view.x - event.rawX
                         dy = view.y - event.rawY
-                        viewX = view.x
                         Log.i("touch", "action-down")
                     }
                     MotionEvent.ACTION_POINTER_UP -> {
@@ -230,7 +272,7 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
                             resetView(view, viewX)
                             return true
                         }
-                        if (diff < view.width / 6) {
+                        if (diff < view.width / 7) {
                             resetView(view, viewX)
                         } else {
                             if (direction == DIRECTION_RIGHT) {
@@ -240,7 +282,7 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
                             }
                         }
                         pauseAnnim = false
-                        startAnimation()
+                        start()
 
                         parentView?.requestDisallowInterceptTouchEvent(false)
                     }
@@ -260,55 +302,55 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
 
     }
 
-    private fun moveViewToRight(view: View, initialPos: Float) {
+    private fun moveViewToRight(view: View?, initialPos: Float) {
         moveView(view, displayMetrics.widthPixels.toFloat(), initialPos)
     }
 
-    private fun moveViewToLeft(view: View, initialPos: Float) {
+    private fun moveViewToLeft(view: View?, initialPos: Float) {
         moveView(view, -1 * displayMetrics.widthPixels.toFloat(), initialPos)
     }
 
-    private fun resetView(view: View, posX: Float) {
-        view.animate()
-            .x(posX)
-            .setDuration(50)
-            .start()
+    private fun resetView(view: View?, posX: Float) {
+        view?.animate()
+                ?.x(posX)
+                ?.setDuration(50)
+                ?.start()
     }
 
-    private fun moveViewImmediate(view: View, posX: Float) {
+    private fun moveViewImmediate(view: View?, posX: Float) {
         Log.i("posX", "" + posX)
-        view.animate()
-            .x(posX)
-            .setDuration(0)
-            .start()
+        view?.animate()
+                ?.x(posX)
+                ?.setDuration(0)
+                ?.start()
     }
 
     var disableTouch: Boolean = false
 
-    private fun moveView(view: View, posX: Float, initialPos: Float) {
-        view.animate()
-            .x(posX)
-            .setDuration(200)
-            .setListener(object : Animator.AnimatorListener {
-                override fun onAnimationRepeat(animation: Animator?) {
-                }
+    private fun moveView(view: View?, posX: Float, initialPos: Float) {
+        view?.animate()
+                ?.x(posX)
+                ?.setDuration(200)
+                ?.setListener(object : Animator.AnimatorListener {
+                    override fun onAnimationRepeat(animation: Animator?) {
+                    }
 
-                override fun onAnimationEnd(animation: Animator?) {
-                    view.postDelayed({ moveViewToBack(view, initialPos) }, 50)
-                    view.animate().setListener(null)
-                    disableTouch = false
-                }
+                    override fun onAnimationEnd(animation: Animator?) {
+                        view.postDelayed({ moveViewToBack(view, initialPos) }, 50)
+                        view.animate().setListener(null)
+                        disableTouch = false
+                    }
 
-                override fun onAnimationCancel(animation: Animator?) {
-                    disableTouch = false
-                }
+                    override fun onAnimationCancel(animation: Animator?) {
+                        disableTouch = false
+                    }
 
-                override fun onAnimationStart(animation: Animator?) {
-                    disableTouch = true
-                }
+                    override fun onAnimationStart(animation: Animator?) {
+                        disableTouch = true
+                    }
 
-            })
-            .start()
+                })
+                ?.start()
     }
 
     private fun moveViewToBack(view: View, posX: Float) {
@@ -327,9 +369,10 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout {
         view.alpha = 1.0f
     }
 
-    private fun reassignTouchListenr(view: View) {
-        view.setOnTouchListener(null)
-        addTouchListenerToView(this.getChildAt(childCount - 1))
+    private fun reassignTouchListenr(view: View?) {
+        view?.setOnTouchListener(null)
+        val childView: View? = this.getChildAt(childCount - 1)
+        addTouchListenerToView(childView)
     }
 
     private fun scaleAllViews() {
