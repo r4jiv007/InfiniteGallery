@@ -188,7 +188,7 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout, View.OnAttachSta
     }
 
     private fun moveViewInDirection(dir: Int) {
-        var view = getChildAt(childCount - 1)
+        val view = getChildAt(childCount - 1) ?: return
         if (dir == DIRECTION_RIGHT) {
             moveViewToRight(view, view.x)
         } else if (dir == DIRECTION_LEFT) {
