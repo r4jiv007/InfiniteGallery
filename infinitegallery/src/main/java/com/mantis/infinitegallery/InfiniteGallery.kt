@@ -7,13 +7,11 @@ import android.os.Handler
 import android.util.AttributeSet
 import android.util.DisplayMetrics
 import android.util.Log
-import android.view.Gravity
-import android.view.MotionEvent
-import android.view.View
-import android.view.ViewConfiguration
+import android.view.*
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.widget.FrameLayout
 import android.widget.ScrollView
+import kotlin.math.abs
 
 
 open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout, View.OnAttachStateChangeListener {
@@ -84,7 +82,8 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout, View.OnAttachSta
 
     fun addChilds(views: MutableList<T>): InfiniteGallery<T> {
         childViewList = views
-        numChildToShow = if (childViewList.size > 3) DEFAULT_CHILD_NUM_TO_SHOW else childViewList.size
+        numChildToShow =
+            if (childViewList.size > 3) DEFAULT_CHILD_NUM_TO_SHOW else childViewList.size
         return this
     }
 
@@ -152,7 +151,7 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout, View.OnAttachSta
         setScale(child, numChildToShow - 1)
         addView(child, 0, getChildLayoutParams())
         child.animate()
-                .x(posX).duration = 200
+            .x(posX).duration = 200
 
         if (childViewList.size > numChildToShow) {
             child.animate().alpha(0.0f)
@@ -205,7 +204,10 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout, View.OnAttachSta
 
 
     fun getChildLayoutParams(): LayoutParams {
-        val layoutParams = LayoutParams(MATCH_PARENT, height - (numChildToShow * Utils.convertDpToPixel(20f, context)))
+        val layoutParams = LayoutParams(
+            MATCH_PARENT,
+            height - (numChildToShow * Utils.convertDpToPixel(20f, context))
+        )
         layoutParams.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
         val pos = if (childCount >= numChildToShow) numChildToShow - 1 else childCount
         layoutParams.topMargin = pos * Utils.convertDpToPixel(20f, context)
@@ -214,9 +216,12 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout, View.OnAttachSta
     }
 
     private fun updateChildLayoutParams(view: View?, pos: Int) {
-        val layoutParams = view?.layoutParams as FrameLayout.LayoutParams
+        val layoutParams = view?.layoutParams as LayoutParams
         val finalPos = if (pos >= numChildToShow) numChildToShow - 1 else pos
-        val animator = ValueAnimator.ofInt(layoutParams.topMargin, finalPos * Utils.convertDpToPixel(20f, context))
+        val animator = ValueAnimator.ofInt(
+            layoutParams.topMargin,
+            finalPos * Utils.convertDpToPixel(20f, context)
+        )
         animator.addUpdateListener { valueAnimator ->
             layoutParams.topMargin = valueAnimator.animatedValue as Int
             view.layoutParams = layoutParams
@@ -229,10 +234,10 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout, View.OnAttachSta
         val finalPos = if (pos >= numChildToShow) numChildToShow - 1 else pos
         val scaleVal = 1 - (.05f * finalPos)
         view?.animate()
-                ?.scaleX(scaleVal)
-                ?.scaleY(scaleVal)
-                ?.setDuration(200)
-                ?.start()
+            ?.scaleX(scaleVal)
+            ?.scaleY(scaleVal)
+            ?.setDuration(200)
+            ?.start()
     }
 
     var parentView: ScrollView? = null
@@ -242,12 +247,15 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout, View.OnAttachSta
         return this
     }
 
+    var gestureDirection: Int? = null
+    private var mVelocityTracker: VelocityTracker? = null
     private var viewX: Float = 0f
     private fun addTouchListenerToView(view: View?) {
-        view?.setOnTouchListener(object : View.OnTouchListener {
+        view?.setOnTouchListener(object : OnTouchListener {
             private var dx: Float = 0f
             private var dy: Float = 0f
             private var clickTime: Long = 0
+
             override fun onTouch(v: View, event: MotionEvent): Boolean {
                 if (disableTouch) {
                     return true
@@ -259,14 +267,33 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout, View.OnAttachSta
                         dx = view.x - event.rawX
                         dy = view.y - event.rawY
                         Log.i("touch", "action-down")
+
+                        // Reset the velocity tracker back to its initial state.
+                        mVelocityTracker?.clear()
+                        // If necessary retrieve a new VelocityTracker object to watch the
+                        // velocity of a motion.
+                        mVelocityTracker = mVelocityTracker ?: VelocityTracker.obtain()
+                        // Add a user's movement to the tracker.
+                        mVelocityTracker?.addMovement(event)
                     }
                     MotionEvent.ACTION_POINTER_UP -> {
+                    }
+                    MotionEvent.ACTION_CANCEL -> {
+                        mVelocityTracker?.recycle()
+                        mVelocityTracker = null
+                        gestureDirection = null
+                        Log.e("moving_view", "gestureDirection is null ACTION_CANCEL")
                     }
                     MotionEvent.ACTION_UP -> {
                         Log.i("touch", "action-up")
 
+                        gestureDirection = null
+
+                        Log.e("moving_view", "gestureDirection is null ACTION_UP")
+                        mVelocityTracker?.recycle()
+                        mVelocityTracker = null
                         direction = if (viewX - view.x < 0) 1 else -1
-                        val diff = Math.abs(viewX - view.x)
+                        val diff = abs(viewX - view.x)
                         if (System.currentTimeMillis() - clickTime <= 100 && diff == 0f) {
                             clickListener.onItemClicked(childViewList[view.tag as Int].getItem())
                             resetView(view, viewX)
@@ -284,16 +311,42 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout, View.OnAttachSta
                         pauseAnnim = false
                         start()
 
-                        parentView?.requestDisallowInterceptTouchEvent(false)
                     }
                     MotionEvent.ACTION_MOVE -> {
-                        if (!(Math.abs(event.rawY + dy) < Math.abs(event.rawX + dx) && Math.abs(event.rawX + dx) > 33f)) {
-                            return true
+                        val pointerId: Int = event.getPointerId(event.actionIndex)
+                        mVelocityTracker?.addMovement(event)
+                        // When you want to determine the velocity, call
+                        // computeCurrentVelocity(). Then call getXVelocity()
+                        // and getYVelocity() to retrieve the velocity for each pointer ID.
+                        mVelocityTracker?.computeCurrentVelocity(1000)
+                        // Log velocity of pixels per second
+                        // Best practice to use VelocityTrackerCompat where possible.
+//                        Log.d("X velocity:", " ${}  Y velocity: ${}")
+
+                        Log.e("gestureDirection", "$gestureDirection")
+                        if (gestureDirection != null) {
+                            if (gestureDirection == VERTICAL) {
+                                Log.e("moving_view", "VERTICAL1")
+                                return true
+                            } else {
+                                parentView?.requestDisallowInterceptTouchEvent(true)
+                                moveViewImmediate(view, event.rawX + dx)
+                                Log.e("moving_view", "HORIZONTAL1 ${abs(event.rawX + dx)}")
+                                return true
+                            }
                         }
 
-                        parentView?.requestDisallowInterceptTouchEvent(true)
-                        moveViewImmediate(view, event.rawX + dx)
-
+                        if (abs(event.rawY + dy) > abs(event.rawX + dx)) {
+                            gestureDirection = VERTICAL
+                            Log.e("moving_view", "VERTICAL1 ${abs(event.rawX + dx)}")
+                            return true
+                        } else if ((abs(event.rawY + dy) < abs(event.rawX + dx))) {
+                            gestureDirection = HORIZONTAL
+                            Log.e("moving_view", "HORIZONTAL2 ${abs(event.rawX + dx)}")
+                            parentView?.requestDisallowInterceptTouchEvent(true)
+                            moveViewImmediate(view, event.rawX + dx)
+                            return true
+                        }
                     }
                 }
                 return true
@@ -312,45 +365,45 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout, View.OnAttachSta
 
     private fun resetView(view: View?, posX: Float) {
         view?.animate()
-                ?.x(posX)
-                ?.setDuration(50)
-                ?.start()
+            ?.x(posX)
+            ?.setDuration(50)
+            ?.start()
     }
 
     private fun moveViewImmediate(view: View?, posX: Float) {
         Log.i("posX", "" + posX)
         view?.animate()
-                ?.x(posX)
-                ?.setDuration(0)
-                ?.start()
+            ?.x(posX)
+            ?.setDuration(0)
+            ?.start()
     }
 
     var disableTouch: Boolean = false
 
     private fun moveView(view: View?, posX: Float, initialPos: Float) {
         view?.animate()
-                ?.x(posX)
-                ?.setDuration(200)
-                ?.setListener(object : Animator.AnimatorListener {
-                    override fun onAnimationRepeat(animation: Animator?) {
-                    }
+            ?.x(posX)
+            ?.setDuration(200)
+            ?.setListener(object : Animator.AnimatorListener {
+                override fun onAnimationRepeat(animation: Animator?) {
+                }
 
-                    override fun onAnimationEnd(animation: Animator?) {
-                        view.postDelayed({ moveViewToBack(view, initialPos) }, 50)
-                        view.animate().setListener(null)
-                        disableTouch = false
-                    }
+                override fun onAnimationEnd(animation: Animator?) {
+                    view.postDelayed({ moveViewToBack(view, initialPos) }, 50)
+                    view.animate().setListener(null)
+                    disableTouch = false
+                }
 
-                    override fun onAnimationCancel(animation: Animator?) {
-                        disableTouch = false
-                    }
+                override fun onAnimationCancel(animation: Animator?) {
+                    disableTouch = false
+                }
 
-                    override fun onAnimationStart(animation: Animator?) {
-                        disableTouch = true
-                    }
+                override fun onAnimationStart(animation: Animator?) {
+                    disableTouch = true
+                }
 
-                })
-                ?.start()
+            })
+            ?.start()
     }
 
     private fun moveViewToBack(view: View, posX: Float) {
@@ -393,3 +446,6 @@ open class InfiniteGallery<T : BaseInfiniteView> : FrameLayout, View.OnAttachSta
     }
 
 }
+
+const val VERTICAL = 1
+const val HORIZONTAL = 2
